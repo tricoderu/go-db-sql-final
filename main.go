@@ -108,6 +108,14 @@ func main() {
 	store := NewParcelStore(db) // создайте объект ParcelStore функцией NewParcelStore
 	service := NewParcelService(store)
 
+	/*
+		// Очистка таблицы parcel перед началом тестов
+		if err := store.Clear(); err != nil {
+			fmt.Println("Ошибка при очистке таблицы:", err)
+			return
+		}
+	*/
+
 	// регистрация посылки
 	client := 1
 	address := "Псков, д. Пушкина, ул. Колотушкина, д. 5"

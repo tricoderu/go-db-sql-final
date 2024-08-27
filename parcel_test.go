@@ -17,11 +17,16 @@ var (
 	randSource = rand.NewSource(time.Now().UnixNano())
 	// randRange использует randSource для генерации случайных чисел
 	randRange = rand.New(randSource)
+	// проще было бы сразу
+	// randRange := rand.New(rand.NewSource(time.Now().UnixNano()))
 )
 
 // getTestParcel возвращает тестовую посылку
 func getTestParcel() Parcel {
+	uniqueNumber := randRange.Intn(1000000)
+
 	return Parcel{
+		Number:    uniqueNumber,
 		Client:    1000,
 		Status:    ParcelStatusRegistered,
 		Address:   "test",
@@ -53,15 +58,24 @@ func TestAddGetDelete(t *testing.T) {
 	parcel := getTestParcel()
 
 	// add
+	fmt.Println("Тестовая посылка:", parcel)
 	id, err := store.Add(parcel) // добавьте новую посылку в БД, убедитесь в отсутствии ошибки и наличии идентификатора
+	/*if err != nil {
+		fmt.Println("Ошибка при добавлении посылки:", err)
+		return
+	}*/
+	// fmt.Println("ID:", id) // ID: 0
+	// fmt.Println("Error:", err) // Error: missing named argument "client"
 	require.NoError(t, err)
-	require.NotEqual(t, 0, id)
+	// require.NotEqual(t, 0, id)
+	require.NotEmpty(t, id) // так побольше закроет ошибок
 	parcel.Number = id
 
 	// get
 	storedParcel, err := store.Get(id) // получите только что добавленную посылку, убедитесь в отсутствии ошибки
 	require.NoError(t, err)
 	require.Equal(t, parcel, storedParcel) // проверьте, что значения всех полей в полученном объекте совпадают со значениями полей в переменной parcel
+
 	// delete
 	err = store.Delete(id) // удалите добавленную посылку, убедитесь в отсутствии ошибки
 	require.NoError(t, err)
@@ -89,6 +103,7 @@ func TestSetAddress(t *testing.T) {
 	// set address
 	newAddress := "new test address"
 	err = store.SetAddress(id, newAddress) // обновите адрес, убедитесь в отсутствии ошибки
+	require.NoError(t, err)
 
 	// check
 	parcel, err := store.Get(id) // получите добавленную посылку и убедитесь, что адрес обновился
@@ -114,6 +129,7 @@ func TestSetStatus(t *testing.T) {
 	// set status
 	newStatus := ParcelStatusSent
 	err = store.SetStatus(id, newStatus) // обновите статус, убедитесь в отсутствии ошибки
+	require.NoError(t, err)
 
 	// check
 	parcel, err := store.Get(id) // получите добавленную посылку и убедитесь, что статус обновился
@@ -137,9 +153,11 @@ func TestGetByClient(t *testing.T) {
 		getTestParcel(),
 		getTestParcel(),
 	}
-	parcelMap := map[int]Parcel{}
+	// parcelMap := map[int]Parcel{}
+	parcelMap := make(map[int]Parcel) // так понятнее
 
 	// задаём всем посылкам один и тот же идентификатор клиента
+	// randRange.Int() // это бы позволило получать более случайные идентификаторы клиентов
 	client := randRange.Intn(10_000_000)
 	parcels[0].Client = client
 	parcels[1].Client = client
@@ -148,8 +166,7 @@ func TestGetByClient(t *testing.T) {
 	// add
 	for i := 0; i < len(parcels); i++ {
 		id, err := store.Add(parcels[i]) // добавьте новую посылку в БД, убедитесь в отсутствии ошибки и наличии идентификатора
-        require.NoError(t, err) 
-     } 
+		require.NoError(t, err)
 
 		// обновляем идентификатор добавленной у посылки
 		parcels[i].Number = id
@@ -159,9 +176,11 @@ func TestGetByClient(t *testing.T) {
 	}
 
 	// get by client
+	// var storedParcels []Parcel
 	storedParcels, err := store.GetByClient(client)    // получите список посылок по идентификатору клиента, сохранённого в переменной client
 	require.NoError(t, err)                            // убедитесь в отсутствии ошибки
 	require.Equal(t, len(parcels), len(storedParcels)) // убедитесь, что количество полученных посылок совпадает с количеством добавленных
+	// require.Len(t, storedParcels, len(parcels))
 
 	// check
 	for _, parcel := range storedParcels {

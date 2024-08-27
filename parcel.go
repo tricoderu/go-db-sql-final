@@ -10,21 +10,43 @@ type ParcelStore struct {
 	db *sql.DB
 }
 
+/*
+// метод Clear для очистки таблицы
+func (s ParcelStore) Clear() error {
+	stmt, err := s.db.Prepare("DELETE FROM parcel;")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec()
+	return err
+}
+*/
 // Передаем хранилище посылок в качестве аргумента функциям Add() и Get().
 func NewParcelStore(db *sql.DB) ParcelStore {
 	return ParcelStore{db: db}
 }
 
+// база данных автоматически генерирует уникальный номер для новой записи и возвращает его
 func (s ParcelStore) Add(p Parcel) (int, error) {
-	// реализуйте добавление строки в таблицу parcel, используйте данные из переменной p
-	/*stmt, err := s.db.Prepare("INSERT INTO parcel (number, client, status, address, created_at) VALUES (?, ?, ?, ?, ?)")
+	stmt, err := s.db.Prepare("INSERT INTO parcel (number, client, status, address, created_at) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return 0, err
 	}
+	defer stmt.Close()
 
-	defer stmt.Close()*/
+	// реализуйте добавление строки в таблицу parcel, используйте данные из переменной p
+	// мы получаем этот сгенерированный номер (см выше), используя result.LastInsertId() после вызова stmt.Exec()
 
-	result, err := s.db.Exec("INSERT INTO parcel (client, status, address, created_at) VALUES (:client, :status, :address, :created_at)", p.Client, p.Status, p.Address, p.CreatedAt)
+	// моя первая версия не прошла тесты с ошибкой: UNIQUE constraint failed: parcel.number
+	// по идее, ошибка связана с нарушением уникального ограничения на поле number в таблице parcel. Видимо, пытаюсь добавить новую запись с номером, который уже существует в таблице. Надо генерировать уникальный номер для каждой тестовой посылки, либо удалять предыдущую запись перед добавлением новой. Не понимаю, почему не очищает УИН...
+	// UPD: Сделал метод Clear, не помогло...
+	result, err := stmt.Exec(p.Number, p.Client, p.Status, p.Address, p.CreatedAt)
+
+	// так не сработало: missing named argument "client"
+	/*result, err := s.db.Exec("INSERT INTO parcel (client, status, address, created_at) VALUES (:client, :status, :address, :created_at)", p.Client, p.Status, p.Address, p.CreatedAt)
+	 */
 	if err != nil {
 		return 0, err
 	}
@@ -35,7 +57,7 @@ func (s ParcelStore) Add(p Parcel) (int, error) {
 	}
 
 	// верните идентификатор последней добавленной записи
-	// return 0, nil - не понял, что это
+	// return 0, nil // не понял, к чему это, когда вернуть нужно id
 	return int(id), nil
 }
 
