@@ -23,10 +23,10 @@ var (
 
 // getTestParcel возвращает тестовую посылку
 func getTestParcel() Parcel {
-	uniqueNumber := randRange.Intn(1000000)
+	// uniqueNumber := randRange.Intn(1000000) // при создании посылки в БД мы НЕ указываем айди, а ждем его от БД
 
 	return Parcel{
-		Number:    uniqueNumber,
+		// Number:    uniqueNumber, // при создании посылки в БД мы НЕ указываем айди, а ждем его от БД
 		Client:    1000,
 		Status:    ParcelStatusRegistered,
 		Address:   "test",

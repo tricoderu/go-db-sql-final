@@ -30,7 +30,8 @@ func NewParcelStore(db *sql.DB) ParcelStore {
 
 // база данных автоматически генерирует уникальный номер для новой записи и возвращает его
 func (s ParcelStore) Add(p Parcel) (int, error) {
-	stmt, err := s.db.Prepare("INSERT INTO parcel (number, client, status, address, created_at) VALUES (?, ?, ?, ?, ?)")
+	// stmt, err := s.db.Prepare("INSERT INTO parcel (number, client, status, address, created_at) VALUES (?, ?, ?, ?, ?)")
+	stmt, err := s.db.Prepare("INSERT INTO parcel (client, status, address, created_at) VALUES (?, ?, ?, ?, ?)")
 	if err != nil {
 		return 0, err
 	}
@@ -42,11 +43,40 @@ func (s ParcelStore) Add(p Parcel) (int, error) {
 	// моя первая версия не прошла тесты с ошибкой: UNIQUE constraint failed: parcel.number
 	// по идее, ошибка связана с нарушением уникального ограничения на поле number в таблице parcel. Видимо, пытаюсь добавить новую запись с номером, который уже существует в таблице. Надо генерировать уникальный номер для каждой тестовой посылки, либо удалять предыдущую запись перед добавлением новой. Не понимаю, почему не очищает УИН...
 	// UPD: Сделал метод Clear, не помогло...
-	result, err := stmt.Exec(p.Number, p.Client, p.Status, p.Address, p.CreatedAt)
-
+	// сработало вот это: создаем набор именованных аргументов для запроса с помощью функции sql.Named().
+	// Первый аргумент - это имя плейсхолдера в запросе, второй - значение, которое мы хотим передать.
+	// Таким образом, мы явно связываем значения полей структуры Parcel с соответствующими именами в запросе.
+	// Этот вариант является более безопасным и читаемым способом выполнения SQL запросов по сравнению с использованием обычных плейсхолдеров, обозначенных с помощью ?. Кроме того, использование именованных плейсхолдеров помогает предотвратить SQL-иньекции, так как значения передаются отдельно от запроса.
+	result, err := s.db.Exec("INSERT INTO parcel (client, status, address, created_at) VALUES (:client, :status, :address, :created_at)",
+		sql.Named("client", p.Client),
+		sql.Named("status", p.Status),
+		sql.Named("address", p.Address),
+		sql.Named("created_at", p.CreatedAt))
+	// result, err := stmt.Exec(p.Client, p.Status, p.Address, p.CreatedAt)
+	// result, err := s.db.Exec("INSERT INTO parcel (client, status, address, created_at) VALUES (:client, :status, :address, :created_at)", p.Client, p.Status, p.Address, p.CreatedAt)
 	// так не сработало: missing named argument "client"
-	/*result, err := s.db.Exec("INSERT INTO parcel (client, status, address, created_at) VALUES (:client, :status, :address, :created_at)", p.Client, p.Status, p.Address, p.CreatedAt)
-	 */
+	/*
+		result, err := s.db.Exec("INSERT INTO parcel (client, status, address, created_at) VALUES (:client, :status, :address, :created_at)", parcelData)
+
+		// Проблема здесь в том, что мы использовали именованные плейсхолдеры (:client, :status, :address, :created_at) в SQL запросе, но передаете обычные аргументы (p.Client, p.Status, p.Address, p.CreatedAt) в Exec().
+		result, err := s.db.Exec("INSERT INTO parcel (client, status, address, created_at) VALUES (:client, :status, :address, :created_at)", p.Client, p.Status, p.Address, p.CreatedAt)
+
+		// Второй вариант - это использование структуры с именованными полями
+				type ParcelData struct {
+			    Client     int
+			    Status     string
+			    Address    string
+			    CreatedAt  string
+			}
+
+			parcelData := ParcelData{
+			    Client:     p.Client,
+			    Status:     p.Status,
+			    Address:    p.Address,
+			    CreatedAt:  p.CreatedAt,
+			}
+
+	*/
 	if err != nil {
 		return 0, err
 	}
